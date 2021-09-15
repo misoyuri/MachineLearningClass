@@ -1,3 +1,4 @@
+from numpy.linalg.linalg import eig
 import six.moves.cPickle as pickle
 import gzip
 import os
@@ -72,7 +73,6 @@ if __name__ == '__main__':
     
     plt.figure("mean")
     plt.imshow(mean_img, cmap='gray')
-    
     plt.figure("var")
     plt.imshow(var_img, cmap='gray')
     
@@ -92,7 +92,7 @@ if __name__ == '__main__':
         plt.imshow(vec_img, cmap='gray')
         
     plt.figure("eigen value 1 to 100")
-    plt.plot(range(100), eigValue[:100])
+    plt.plot(eigValue[:100])
     plt.show()
     
     # print(cov)
