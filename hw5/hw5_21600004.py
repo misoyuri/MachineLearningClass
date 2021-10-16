@@ -1,15 +1,13 @@
-from numpy.core.defchararray import equal
-from numpy.linalg.linalg import eig
 import six.moves.cPickle as pickle
 import gzip
 import os
 import numpy as np
 import matplotlib.pyplot as plt
 import random as rd
-from numpy import linalg as LA
-
-#import scipy.misc
-from PIL import Image
+import pandas as pd
+import copy
+from sklearn.decomposition import PCA
+from numpy.linalg.linalg import eig, eigvals
 
 def load_data(dataset):
     ''' Loads the dataset
@@ -57,62 +55,62 @@ def load_data(dataset):
     return train_set, valid_set, test_set
 
 def euclidean_dist(a, b):
-    return np.sqrt(np.sum(a - b)**2)
+    return np.sqrt(np.sum((a - b)**2))
 
-def kmean(x, k, max_iter=1000, threshold=0.001):
-    N, d = x.shape
-    centroid = np.zeros((k, d))
-
-    sse = 0
-
-    for idx in range(k):
-        random_idx = rd.randrange(N)
-        centroid[idx] = x[random_idx]
-
-    for idx in range(max_iter):
-        cluster_group = []
+def kmean(X, K):
+    N, d = X.shape
+    centroids = np.zeros((K, d))
+    
+    # init centroids
+    for k in range(K):
+        centroids[k] = X[rd.randrange(N)]
+    
+    # init clusters
+    clusters = np.zeros(N)
+    
+    # repeat until centroids does not translate
+    while(True):
+        # assignment step
         for n in range(N):
-            dist_centroid = []
+            distance = []
+            for k in range(K):
+                distance.append(euclidean_dist(centroids[k], X[n]))
+                
+            clusters[n] = np.argmin(distance)
+            
+        # update step
+        prev_centroids = copy.deepcopy(centroids)
 
-            for k_idx in range(k):
-                dist_centroid.append(euclidean_dist(x[n], centroid[k_idx]))
-            cluster_group.append(np.argmin(dist_centroid)) 
-        
-        centroid = np.zeros((k, d))
-        
-        sum_ = []
-        cnt_ = []
-        
-        for k_idx in range(k):
-            sum_.append(np.zeros(d))
-            cnt_.append(0)
-        
-        for n in range(N):
-            sum_[cluster_group[n]] += x[cluster_group[n]]
-            cnt_[cluster_group[n]] += 1
-        
-        for k_idx in range(k):
-            centroid[k_idx] = sum_[k_idx] / cnt_[k_idx]
-        
-        prev_sse = sse
-        sse = 0
-        
-        for n in range(N):
-            sse += euclidean_dist(x[n], centroid[cluster_group[n]])**2
-        
-        print("sse::", sse)
-        if prev_sse - sse < threshold :
+        for k in range(K):
+            clustered_group = []
+            for n in range(N):
+                if clusters[n] == k:
+                    clustered_group.append(X[n])
+            centroids[k] = np.mean(clustered_group, axis=0)
+    
+        # temination status
+        if(euclidean_dist(centroids, prev_centroids) == 0):
             break
+        
+    return clusters, centroids
 
-
-
-    return cluster_group, centroid, k
-
-def visualization(X, clusters, centroid, K):    # visualization
+def print_cluster_info(X, clusters, dim, K, centroid):
+    members = []
+    for k in range(K):
+        members.append(0)
+        
+    for n in range(len(X)):
+        members[int(clusters[n])] += 1
+    
+    print("When Dimenstion is {0} and K of K-mean is {1}".format(dim, K))
+    for idx, val in enumerate(members):
+        print("# of {0}th cluster is {1}".format(idx, val))
+        
+# visualization only dim is 2
+def visualization(X, clusters, centroid, K):
     for k in range(K):
         mask = np.equal(clusters, k)
-  
-    plt.scatter(X[mask, 0], X[mask, 1])
+        plt.scatter(X[mask, 0], X[mask, 1])
     
     plt.scatter(centroid[:, 0], centroid[:, 1], marker = "x", s = 100)
     plt.show()
@@ -121,14 +119,11 @@ if __name__ == '__main__':
     train_set, val_set, test_set = load_data('mnist.pkl.gz')
 
     train_x, train_y = train_set
-    val_x, val_y = val_set
-    test_x, test_y = test_set
     
     train_x_mask = np.where((train_y == 3) | (train_y == 9))
     train_x = train_x[train_x_mask]
+    train_y = train_y[train_x_mask]
     
-    cluster, centroid, k = kmean(train_x, 2)
-    print(cluster)
     meanTrain = np.mean(train_x, axis=0)
     varTrain = np.var(train_x, axis=0)
     
@@ -137,8 +132,21 @@ if __name__ == '__main__':
     
     cov = np.cov(train_x.T)
     eigValue, eigVector = np.linalg.eig(cov)
+
+    dim2_data = train_x.dot(eigVector[:2].T.real)
     
-    print("X : ", train_x.shape)
-    print("ev: ", eigVector[:, 3].shape)
+    dimesion = [2, 5, 10]
+    k_mean_k = [2, 3, 5, 10]
     
-    visualization(train_x, cluster, centroid, k)
+    df = pd.DataFrame(train_x)
+    
+    for d in dimesion:
+        pca = PCA(n_components = d)
+        
+        reduced_train_x = pca.fit_transform(df)
+        
+        for K in k_mean_k:
+            clusters, centroids = kmean(reduced_train_x, K)
+            print_cluster_info(reduced_train_x, clusters, d, K, centroids)
+            if d == 2:
+                visualization(reduced_train_x, clusters, centroids, K)
