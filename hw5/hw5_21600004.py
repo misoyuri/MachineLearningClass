@@ -94,26 +94,60 @@ def kmean(X, K):
         
     return clusters, centroids
 
-def print_cluster_info(X, clusters, dim, K, centroid):
+def print_cluster_info(X, Y, clusters, dim, K, centroid):
     members = []
     for k in range(K):
-        members.append(0)
+        members.append([])
         
     for n in range(len(X)):
-        members[int(clusters[n])] += 1
+        members[int(clusters[n])].append(X[n])
     
+    print("*"*45)
     print("When Dimenstion is {0} and K of K-mean is {1}".format(dim, K))
-    for idx, val in enumerate(members):
-        print("# of {0}th cluster is {1}".format(idx, val))
+    for idx, member in enumerate(members):
+        print("# of {0}th cluster is {1}".format(idx, len(member)))
+    
+    if(K == 2):
+        clustered = [[0, 0], [0, 0]]
+        for n in range(len(X)):
+            if(int(clusters[n]) == 0 and int(Y[n]) == 3):
+                clustered[0][0] += 1
+            elif(int(clusters[n]) == 0 and int(Y[n]) == 9):
+                clustered[0][1] += 1
+            elif(int(clusters[n]) == 1 and int(Y[n]) == 3):
+                clustered[1][0] += 1
+            elif(int(clusters[n]) == 1 and int(Y[n]) == 9):
+                clustered[1][1] += 1
+
+        print(clustered)
+        print("*"*45)
+    
+    for k in range(K):
+        fig = plt.figure()
+        if dim == 784:
+            subtitle = "Raw Image Clustering Result: K=" + str(K) + " - " + str(k) +"th clustered groupd"
+            title = "RawImage_K" + str(K)+"_"+str(k)+"th"
+        else:
+            subtitle = "dim " + str(dim)+ " Image Clustering Result: K=" + str(K) + " - " + str(k) +"th clustered groupd"
+            title = "dim"+str(dim)+"_K"+str(K)+"_"+str(k)+"th"
+        for i in range(100):
+            plottable_image = np.reshape(members[k][i], (28, 28))
+            ax = fig.add_subplot(10, 10, i+1)
+            ax.axis('off')
+            ax.imshow(plottable_image, cmap='gray_r')
+        plt.suptitle(subtitle)
+        plt.savefig("./images/" + title + ".png")
+        plt.clf()
         
 # visualization only dim is 2
-def visualization(X, clusters, centroid, K):
+def visualization_scatter(X, clusters, centroid, K):
     for k in range(K):
         mask = np.equal(clusters, k)
         plt.scatter(X[mask, 0], X[mask, 1])
     
     plt.scatter(centroid[:, 0], centroid[:, 1], marker = "x", s = 100)
-    plt.show()
+    plt.savefig("./images/" + "dimenstion_2_clustered_image_"+str(K) + ".png")
+    plt.clf()
 
 if __name__ == '__main__':
     train_set, val_set, test_set = load_data('mnist.pkl.gz')
@@ -135,18 +169,21 @@ if __name__ == '__main__':
 
     dim2_data = train_x.dot(eigVector[:2].T.real)
     
-    dimesion = [2, 5, 10]
+    dimesion = [2, 5, 10, 784]
     k_mean_k = [2, 3, 5, 10]
     
     df = pd.DataFrame(train_x)
     
     for d in dimesion:
+        # if d == 784:
+        #     reduced_train_x = train_x
+        # else:
         pca = PCA(n_components = d)
-        
         reduced_train_x = pca.fit_transform(df)
-        
+    
         for K in k_mean_k:
             clusters, centroids = kmean(reduced_train_x, K)
-            print_cluster_info(reduced_train_x, clusters, d, K, centroids)
+            restored_train_x = pca.inverse_transform(reduced_train_x)
+            print_cluster_info(restored_train_x, train_y, clusters, d, K, centroids)
             if d == 2:
-                visualization(reduced_train_x, clusters, centroids, K)
+                visualization_scatter(reduced_train_x, clusters, centroids, K)

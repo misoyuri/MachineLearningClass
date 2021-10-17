@@ -1,0 +1,121 @@
+... loading data
+*********************************************
+When Dimenstion is 2 and K of K-mean is 2
+# of 0th cluster is 5459
+# of 1th cluster is 4630
+[[577, 4882], [4524, 106]]
+*********************************************
+*********************************************
+When Dimenstion is 2 and K of K-mean is 3
+# of 0th cluster is 5096
+# of 1th cluster is 3043
+# of 2th cluster is 1950
+*********************************************
+When Dimenstion is 2 and K of K-mean is 5
+# of 0th cluster is 1780
+# of 1th cluster is 1747
+# of 2th cluster is 2322
+# of 3th cluster is 1446
+# of 4th cluster is 2794
+*********************************************
+When Dimenstion is 2 and K of K-mean is 10
+# of 0th cluster is 1364
+# of 1th cluster is 819
+# of 2th cluster is 1142
+# of 3th cluster is 707
+# of 4th cluster is 1243
+# of 5th cluster is 893
+# of 6th cluster is 1086
+# of 7th cluster is 755
+# of 8th cluster is 982
+# of 9th cluster is 1098
+*********************************************
+When Dimenstion is 5 and K of K-mean is 2
+# of 0th cluster is 4632
+# of 1th cluster is 5457
+[[4525, 107], [576, 4881]]
+*********************************************
+*********************************************
+When Dimenstion is 5 and K of K-mean is 3
+# of 0th cluster is 4501
+# of 1th cluster is 3024
+# of 2th cluster is 2564
+*********************************************
+When Dimenstion is 5 and K of K-mean is 5
+# of 0th cluster is 2115
+# of 1th cluster is 1487
+# of 2th cluster is 2005
+# of 3th cluster is 2167
+# of 4th cluster is 2315
+*********************************************
+When Dimenstion is 5 and K of K-mean is 10
+# of 0th cluster is 729
+# of 1th cluster is 1483
+# of 2th cluster is 733
+# of 3th cluster is 845
+# of 4th cluster is 731
+# of 5th cluster is 1362
+# of 6th cluster is 1057
+# of 7th cluster is 863
+# of 8th cluster is 1067
+# of 9th cluster is 1219
+*********************************************
+When Dimenstion is 10 and K of K-mean is 2
+# of 0th cluster is 5455
+# of 1th cluster is 4634
+[[569, 4886], [4532, 102]]
+*********************************************
+*********************************************
+When Dimenstion is 10 and K of K-mean is 3
+# of 0th cluster is 2978
+# of 1th cluster is 2612
+# of 2th cluster is 4499
+*********************************************
+When Dimenstion is 10 and K of K-mean is 5
+# of 0th cluster is 2075
+# of 1th cluster is 2086
+# of 2th cluster is 1451
+# of 3th cluster is 1919
+# of 4th cluster is 2558
+*********************************************
+When Dimenstion is 10 and K of K-mean is 10
+# of 0th cluster is 868
+# of 1th cluster is 1131
+# of 2th cluster is 923
+# of 3th cluster is 1157
+# of 4th cluster is 1135
+# of 5th cluster is 806
+# of 6th cluster is 954
+# of 7th cluster is 759
+# of 8th cluster is 1167
+# of 9th cluster is 1189
+*********************************************
+When Dimenstion is 784 and K of K-mean is 2
+# of 0th cluster is 5437
+# of 1th cluster is 4652
+[[552, 4885], [4549, 103]]
+*********************************************
+*********************************************
+When Dimenstion is 784 and K of K-mean is 3
+# of 0th cluster is 2962
+# of 1th cluster is 4519
+# of 2th cluster is 2608
+*********************************************
+When Dimenstion is 784 and K of K-mean is 5
+# of 0th cluster is 1511
+# of 1th cluster is 1459
+# of 2th cluster is 2788
+# of 3th cluster is 2360
+# of 4th cluster is 1971
+*********************************************
+When Dimenstion is 784 and K of K-mean is 10
+# of 0th cluster is 1088
+# of 1th cluster is 1115
+# of 2th cluster is 1038
+# of 3th cluster is 1233
+# of 4th cluster is 821
+# of 5th cluster is 1083
+# of 6th cluster is 933
+# of 7th cluster is 883
+# of 8th cluster is 903
+# of 9th cluster is 992
