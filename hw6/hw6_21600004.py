@@ -54,147 +54,72 @@ def load_data(dataset):
 
     return train_set, valid_set, test_set
 
-def euclidean_dist(a, b):
-    return np.sqrt(np.sum((a - b)**2))
-
-def kmean(X, K):
-    N, d = X.shape
-    centroids = np.zeros((K, d))
-    
-    # init centroids
-    for k in range(K):
-        centroids[k] = X[rd.randrange(N)]
-    
-    # init clusters
-    clusters = np.zeros(N)
-    
-    # repeat until centroids does not translate
-    while(True):
-        # assignment step
-        for n in range(N):
-            distance = []
-            for k in range(K):
-                distance.append(euclidean_dist(centroids[k], X[n]))
-                
-            clusters[n] = np.argmin(distance)
-            
-        # update step
-        prev_centroids = copy.deepcopy(centroids)
-
-        for k in range(K):
-            clustered_group = []
-            for n in range(N):
-                if clusters[n] == k:
-                    clustered_group.append(X[n])
-            centroids[k] = np.mean(clustered_group, axis=0)
-    
-        # temination status
-        if(euclidean_dist(centroids, prev_centroids) == 0):
-            break
-        
-    return clusters, centroids
-
-def print_cluster_info(X, Y, clusters, dim, K, centroid):
-    members = []
-    for k in range(K):
-        members.append([])
-        
-    for n in range(len(X)):
-        members[int(clusters[n])].append(X[n])
-    
-    print("*"*45)
-    print("When Dimenstion is {0} and K of K-mean is {1}".format(dim, K))
-    for idx, member in enumerate(members):
-        print("# of {0}th cluster is {1}".format(idx, len(member)))
-    
-    if(K == 2):
-        clustered = [[0, 0], [0, 0]]
-        for n in range(len(X)):
-            if(int(clusters[n]) == 0 and int(Y[n]) == 3):
-                clustered[0][0] += 1
-            elif(int(clusters[n]) == 0 and int(Y[n]) == 9):
-                clustered[0][1] += 1
-            elif(int(clusters[n]) == 1 and int(Y[n]) == 3):
-                clustered[1][0] += 1
-            elif(int(clusters[n]) == 1 and int(Y[n]) == 9):
-                clustered[1][1] += 1
-
-        print(clustered)
-        print("*"*45)
-    
-    for k in range(K):
-        fig = plt.figure()
-        if dim == 784:
-            subtitle = "Raw Image Clustering Result: K=" + str(K) + " - " + str(k) +"th clustered groupd"
-            title = "RawImage_K" + str(K)+"_"+str(k)+"th"
-        else:
-            subtitle = "dim " + str(dim)+ " Image Clustering Result: K=" + str(K) + " - " + str(k) +"th clustered groupd"
-            title = "dim"+str(dim)+"_K"+str(K)+"_"+str(k)+"th"
-        for i in range(100):
-            plottable_image = np.reshape(members[k][i], (28, 28))
-            ax = fig.add_subplot(10, 10, i+1)
-            ax.axis('off')
-            ax.imshow(plottable_image, cmap='gray_r')
-        plt.suptitle(subtitle)
-        plt.savefig("./images/" + title + ".png")
-        plt.clf()
-        
-# visualization only dim is 2
-def visualization_scatter(X, clusters, centroid, K):
-    for k in range(K):
-        mask = np.equal(clusters, k)
-        plt.scatter(X[mask, 0], X[mask, 1])
-    
-    plt.scatter(centroid[:, 0], centroid[:, 1], marker = "x", s = 100)
-    plt.imshow()
-    # plt.savefig("./images/" + "dimenstion_2_clustered_image_"+str(K) + ".png")
-    # plt.clf()
+def visualization_scatter(X, Y, number_of_label, save_file_name):
+    plt.figure(figsize=(13, 10))
+    for label in range(number_of_label):
+        mask = np.equal(Y, label)
+        plt.scatter(X[mask, 0], X[mask, 1], label=str(label))
+    plt.legend()
+    plt.savefig("./images/" + save_file_name + ".png")
+    plt.clf()
 
 if __name__ == '__main__':
     train_set, val_set, test_set = load_data('mnist.pkl.gz')
 
     train_x, train_y = train_set
     
-    
     # PCA
-    # mean_Train = train_x.mean(0)
+    mean_Train = train_x.mean(0)
     
-    # cov = np.cov(train_x.T)
-    # _, eigVector = np.linalg.eig(cov)
+    cov = np.cov(train_x.T)
+    eig_val, eigVector = np.linalg.eig(cov)
 
-    # dim2_data = np.matmul(train_x, eigVector[:, :2]).real
+    sorted_eigVector = eigVector[np.argsort(eig_val)[::-1]]
     
-    # K = 10
-    # clusters, centroids = kmean(dim2_data, K)
-    # visualization_scatter(dim2_data, clusters, centroids, K)
+    pca_dim2 = np.matmul(train_x, sorted_eigVector[:, :2]).real
+    
+    visualization_scatter(pca_dim2, train_y, number_of_label=10, save_file_name="PCA")
+    
+    
     
     # LDA
-    df_train_x = pd.DataFrame(train_x)
-    global_mean_train = train_x.mean(0)
+    global_mean = train_x.mean(0).reshape(784, 1)
+    N, d = train_x.shape
+
+    class_data = []
+    class_mean_data = []
     
-    d = train_x[0].shape
-    
-    
-    train_classified = []
-    
-    for idx in range(10):
-        train_classified.append([])
-    
-    for x, y in zip(train_x, train_y):
-        train_classified[int(y)].append(x)
-    
-    train_mean_classified = []
-    
-    for label in train_classified:
-        np_label = np.array(label)
-        train_mean_classified.append(np_label.mean(0))    
+    # make classified data list
+    for label in range(10):
+        class_data.append(train_x[train_y==label])
+        class_mean_data.append(np.mean(class_data[label], axis=0).reshape(784, 1))
         
-    sw = np.matrix((d, d))
-    
-    for label, classified_data in enumerate(train_classified):
-        si = np.zeros((d, d))
-        for x in classified_data:
-            x_mi = np.matrix(x - train_mean_classified[label])
-            si += x_mi @ x_mi.T
+    sb = np.zeros((784, 784))
+
+
+    # Calculate S of b
+    for label in range(10):
+        diff = class_mean_data[label] - global_mean
+        sb += class_data[label].shape[0] * np.matmul(diff, diff.T)    
+        
+    # Calculate S of w
+    sw = np.zeros((784, 784))
+    for label in range(10):
+        si = np.zeros((784, 784))
+        for data_x in class_data[label]:
+            diff = data_x.reshape(784, 1) - class_mean_data[label]
+            si += np.matmul(diff, diff.T)
         sw += si
-    print(sw.shape)
+    
+    print("class_mean_data::", class_mean_data[0].shape)
+    print("global_mean::", global_mean.shape)
+    print("sb::", sb.shape)
+    print("sw::", sw.shape)
+    
+    invSw = np.linalg.pinv(sw)
+    invSw_mul_Sb = np.matmul(invSw, sb)
+    eig_val, eig_vec = np.linalg.eig(invSw_mul_Sb)
+    sorted_eig_vec = eig_vec[:, np.argsort(eig_val)[::-1]]
+
+    lda_dim2 = np.matmul(train_x, sorted_eig_vec[:, :2]).real
+    visualization_scatter(lda_dim2, train_y, number_of_label=10, save_file_name="LDA")
