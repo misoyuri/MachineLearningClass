@@ -1,3 +1,4 @@
+from pickle import TRUE
 import six.moves.cPickle as pickle
 import gzip
 import os
@@ -72,18 +73,28 @@ if __name__ == '__main__':
     test_x, test_y = test_set
     
     # PCA
-    # mean_Train = train_x.mean(0)
+    mean_Train = train_x.mean(0)
     
-    # cov = np.cov(train_x.T)
-    # eig_val, eigVector = np.linalg.eig(cov)
+    cov = np.cov(train_x.T)
+    eig_val, eigVector = np.linalg.eig(cov)
 
-    # sorted_eigVector = eigVector[np.argsort(eig_val)[::-1]]
+    sorted_eigVector = eigVector[np.argsort(eig_val)[::-1]]
+    sorted_eigVal = np.sort(eig_val)[::-1]
+    pca_dim2 = np.matmul(train_x, sorted_eigVector[:, :2]).real
     
-    # pca_dim2 = np.matmul(train_x, sorted_eigVector[:, :2]).real
+    visualization_scatter(pca_dim2, train_y, number_of_label=10, save_file_name="PCA")
     
-    # visualization_scatter(pca_dim2, train_y, number_of_label=10, save_file_name="PCA")
-    print("TSNE Start")
-    tsne_dim2 = TSNE(n_components= 2,random_state = 0).fit_transform(test_x)
-    print("TSNE End")
-    visualization_scatter(tsne_dim2, test_y, number_of_label=10, save_file_name="TSNE")
+    pca_dim43 = np.matmul(train_x, sorted_eigVector[:, :43]).real
+    
+    total_sum = sum(sorted_eigVal)
+    sum_ = 0.0
+    for idx, val in enumerate(sorted_eigVal):
+        sum_ += val
+        print(idx, ": ", sum_ / total_sum)
+    
+    
+    
+    # t-SNE
+    tsne_train_dim2 = TSNE(n_components= 2, random_state = 0).fit_transform(pca_dim43)
+    visualization_scatter(tsne_train_dim2, train_y, number_of_label=10, save_file_name="TSNE_43dim")
     
