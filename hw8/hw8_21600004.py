@@ -8,8 +8,9 @@ import random as rd
 import pandas as pd
 import copy
 import torch
-from sklearn.decomposition import PCA
-from sklearn.manifold import TSNE
+import time
+from sklearn.ensemble import RandomForestClassifier
+
 
 from numpy.linalg.linalg import eig, eigvals
 
@@ -73,58 +74,24 @@ class MyKNN:
         
         # calculate distance 
         self.distance_Map = np.zeros((N_test, N_train))
-        
-        for i in range(N_test):
-            for j in range(N_train):
-                self.distance_Map[i][j] = np.sqrt(np.sum((train_x[i] - test_x[j])**2))
+
+        for i in range(0, N_test):
+            for j in range(0, N_train):
+                self.distance_Map[i][j] = np.sqrt(np.sum((train_x[j] - test_x[i])**2))
                 
     def predict(self, test_y, K):
         predicted = []
         
-        for idx, label in enumerate(test_y):
+        for idx in range(0, test_y.shape[0]):
             near_distance = np.argsort(self.distance_Map[idx])
             vote = [0 for x in range(10)]
             
             for k in range(K):
-                vote[self.train_y[near_distance[k]]] += 1
+                vote[self.train_y[near_distance][k]] += 1
                 
             predicted.append(np.argmax(vote))
             
         return predicted
-
-
-
-# def knn(X_train, Y_train, X_test, K=3):
-#     N_train, d_train = X_train.shape
-#     N_test, d_test = X_test.shape
-    
-    
-#     print("N_train: {0}, d_train: {1}".format(N_train, d_train))
-#     print("N_test : {0}, d_test : {1}".format(N_test, d_test))
-    
-    
-#     predicted = []
-    
-#     # calculate distance 
-#     distance_Map = np.zeros((N_test, N_train))
-    
-#     for i in range(N_test):
-#         for j in range(N_train):
-#             distance_Map[i][j] = calc_distacne(X_test[i], X_train[j])
-        
-#         near_distance = np.argsort(distance_Map[i])
-#         vote = [0 for x in range(10)]
-        
-#         for k in range(K):
-#             vote[Y_train[near_distance[k]]] += 1
-            
-#         predicted.append(np.argmax(vote))
-       
-        
-    
-#     return predicted
-        
-            
 
 def visualization_scatter(X, Y, number_of_label, save_file_name):
     plt.figure(figsize=(13, 10))
@@ -144,19 +111,43 @@ if __name__ == '__main__':
     filtered_train_x = np.empty([0, 784])
     filtered_train_y = np.array([], dtype=int)
     
+    filtered_test_x = np.empty([0, 784])
+    filtered_test_y = np.array([], dtype=int)
     
     for idx in range(10):
         x_mask = np.where(train_y == idx)
-        x = train_x[x_mask][:1000]
-        y = train_y[x_mask][:1000]
+        x = train_x[x_mask]
+        y = train_y[x_mask]
+        
+        rd_idx = [ idx for idx in range(0, x.shape[0])]
+        rd_idx = rd.sample(rd_idx, 1000)
+        
+        x = x[rd_idx]
+        y = y[rd_idx]
+        
         
         filtered_train_x = np.append(filtered_train_x, x, axis = 0)
         filtered_train_y = np.append(filtered_train_y, y, axis = 0)
     
+    for idx in range(10):
+        x_mask = np.where(test_y == idx)
+        x = test_x[x_mask]
+        y = test_y[x_mask]
+        
+        rd_idx = [ idx for idx in range(0, x.shape[0])]
+        rd_idx = rd.sample(rd_idx, 100)
+        
+        x = x[rd_idx]
+        y = y[rd_idx]
+        
+        filtered_test_x = np.append(filtered_test_x, x, axis = 0)
+        filtered_test_y = np.append(filtered_test_y, y, axis = 0)
+    
+    
     print("train: {0} vs {1}".format(train_x.shape, filtered_train_x.shape))
     print("train: {0} vs {1}".format(train_y.shape, filtered_train_y.shape))
     
-    print("Test: ", test_x.shape)
+    print("Test: ", filtered_test_x.shape)
     
     # PCA
     mean_Train = test_x.mean(0)
@@ -167,46 +158,57 @@ if __name__ == '__main__':
     sorted_eigVector = eigVector[np.argsort(eig_val)[::-1]]
     sorted_eigVal = np.sort(eig_val)[::-1]
     
-    list_test_y = test_y.tolist()
+    list_test_y = filtered_test_y.tolist()
     
     K_list = [1, 5, 10]
     dim_list = [2, 7, 784]
-    
+    rf_list = [10, 100, 500]
     
     for dim in dim_list:
-        knn = MyKNN()
         
         pca_dim_train = np.matmul(filtered_train_x, sorted_eigVector[:, :dim]).real
-        pca_dim_test = np.matmul(test_x, sorted_eigVector[:, :dim]).real
+        pca_dim_test = np.matmul(filtered_test_x, sorted_eigVector[:, :dim]).real
+        
+        
+        ##############################
+        #            KNN             #
+        ##############################
+        knn = MyKNN()
+        
+        start_time = time.time()
         
         knn.fit(pca_dim_train, filtered_train_y, pca_dim_test)
         
         for k in K_list:
-            predicted_y = knn.predict(test_y=test_y, K=k)
-            
-            file_name = "./predicted_y_dim" + str(dim) + "_k" + str(k) +".txt"
-            f = open(file_name, "w")
-            
-            for val in predicted_y:
-                f.write(str(val)+"\n")
-            f.close()
-            
+            predicted_y = knn.predict(test_y=filtered_test_y, K=k)
+                     
+            print("---{}s seconds---".format(time.time()-start_time))
             # test accuracy
             acc = 0
-            for idx in range(len(list_test_y)):
+            for idx in range(len(filtered_test_y)):
                 if(int(list_test_y[idx]) == int(predicted_y[idx])):
                     acc += 1
             
-            print("Accuracy:: {0}".format(acc / len(list_test_y)))
-            file_name = "./predicted_y_dim" + str(dim) + "_k" + str(k) +".txt"
-            f = open(file_name, "w")
-            
-            for val in predicted_y:
-                f.write(str(val)+"\n")
-            f.close()
+            print("Accuracy of {0}-dim {1}-k:: {2}  ||  {3} / {4}\n".format(dim, k, acc / len(list_test_y),  acc, len(list_test_y)))
 
-    
+
+        ##############################
+        #             RF             #
+        ##############################
+
+
+        for estimator in rf_list:
+            start_time = time.time()
+            rf = RandomForestClassifier(n_estimators=estimator)
+            rf.fit(pca_dim_train, filtered_train_y)
         
-    
-    
-    
+            y_pred_dt = rf.predict(pca_dim_test)    
+            print("---{}s seconds---".format(time.time()-start_time))
+            
+            # test accuracy
+            acc = 0
+            for idx in range(len(filtered_test_y)):
+                if(int(list_test_y[idx]) == int(y_pred_dt[idx])):
+                    acc += 1
+                
+            print("Accuracy of {0}-dim {1}-estimators:: {2}  ||  {3} / {4}".format(dim, estimator, acc / len(list_test_y), acc, len(list_test_y)))
