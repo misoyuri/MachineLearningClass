@@ -1,71 +1,16 @@
-from pickle import TRUE
-import six.moves.cPickle as pickle
-import gzip
-import os
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 import random as rd
 import pandas as pd
 import copy
-import torch
 import time
 
-class RBF:
-
-    def __init__(self, X, y, tX, ty, num_of_classes,
-                 k, std_from_clusters=True):
-        self.X = X
-        self.y = y
-
-        self.tX = tX
-        self.ty = ty
-
-        self.number_of_classes = num_of_classes
-        self.k = k
-        self.std_from_clusters = std_from_clusters
-
-    def convert_to_one_hot(self, x, num_of_classes):
-        arr = np.zeros((len(x), num_of_classes))
-        for i in range(len(x)):
-            c = int(x[i])
-            arr[i][c] = 1
-        return arr
-
-    def rbf(self, x, c, s):
-        distance = euclidean_dist(x, c)
-        return 1 / np.exp(-distance / s ** 2)
-
-    def rbf_list(self, X, centroids, std_list):
-        RBF_list = []
-        for x in X:
-            RBF_list.append([self.rbf(x, c, s) for (c, s) in zip(centroids, std_list)])
-        return np.array(RBF_list)
-
-    def fit(self):
-        self.std_list, self.centroids = kmean(self.X, self.k)
-
-        if not self.std_from_clusters:
-            dMax = np.max([euclidean_dist(c1, c2) for c1 in self.centroids for c2 in self.centroids])
-            self.std_list = np.repeat(dMax / np.sqrt(2 * self.k), self.k)
-
-        RBF_X = self.rbf_list(self.X, self.centroids, self.std_list)
-
-        self.w = np.linalg.pinv(RBF_X.T @ RBF_X) @ RBF_X.T @ self.convert_to_one_hot(self.y, self.number_of_classes)
-
-        RBF_list_tst = self.rbf_list(self.tX, self.centroids, self.std_list)
-
-        self.pred_ty = RBF_list_tst @ self.w
-        print(self.pred_ty[-50:])
-
-        self.pred_ty = np.array([np.argmax(x) for x in self.pred_ty])
-
-        # diff = self.pred_ty - self.ty
-        # print('Accuracy: ', len(np.where(diff == 0)[0]) / len(diff))
 
 def euclidean_dist(a, b):
     return np.sqrt(np.sum((a - b)**2))
 
-def kmean(X, K):
+def kmeans(X, K):
     N, d = X.shape
     centroids = np.zeros((K, d))
     
@@ -90,17 +35,67 @@ def kmean(X, K):
         prev_centroids = copy.deepcopy(centroids)
 
         for k in range(K):
-            clustered_group = []
-            for n in range(N):
-                if clusters[n] == k:
-                    clustered_group.append(X[n])
-            centroids[k] = np.mean(clustered_group, axis=0)
+            clustered_group = X[clusters==k]
+            if len(clustered_group) > 0:
+                centroids[k] = np.mean(clustered_group, axis=0)
     
         # temination status
         if(euclidean_dist(centroids, prev_centroids) == 0):
             break
+    
+    stds = np.zeros(K)
+
+    std_of_stds = []
+    for i in range(K):
+        p = X[clusters == i]
+        stds[i] = np.std(X[clusters == i])
+        std_of_stds.append(stds[i])
+    
+    std_of_stds = np.mean(std_of_stds)
+    
+    for i in range(K):
+        if(len(clusters == i) == 0):
+            stds[i] = std_of_stds
+
+    print("stds:", stds)
+    return centroids, stds
+
+class RBFNet(object):
+    def __init__(self, K=2, lr=0.01, epochs=100):
+        self.k = K
+        self.lr = lr
+        self.epochs = epochs
         
-    return clusters, centroids
+        self.w = np.random.randn(K)
+        self.b = np.random.randn(1)
+    
+    def RBF(self, x, centorid, std):
+        if std == 0.0:
+            return 1
+        else:
+            return np.exp(-1 / (2 * std * std) * np.sum((x-centorid)**2))
+        
+    def fit(self, X, y):
+        self.centroids, self.stds = kmeans(X, self.k)
+
+        for epoch in range(self.epochs):
+            for i in range(X.shape[0]):
+                pi = np.array([self.RBF(X[i], centorid, std) for centorid, std, in zip(self.centroids, self.stds)])
+                y_hat = self.w.T @ pi + self.b
+                
+                error = -(y[i] - y_hat)
+
+                self.w = self.w - self.lr * pi * error
+                self.b = self.b - self.lr * error
+
+    def predict(self, X):
+        y_pred = []
+        for i in range(X.shape[0]):
+            pi = np.array([self.RBF(X[i], centorid, std) for centorid, std, in zip(self.centroids, self.stds)])
+            y_hat = self.w.T @ pi + self.b
+            y_pred.append(y_hat)
+            
+        return np.array(y_pred)
 
 def load_data(dataset):
     train1 = dataset + "_train1.txt"
@@ -109,39 +104,98 @@ def load_data(dataset):
     
     train_dataset1 = pd.read_csv(train1, sep="\t",header=None)
     train_dataset2 = pd.read_csv(train2, sep="\t",header=None)
-    train_dataset = pd.concat([train_dataset1, train_dataset2])
     
     test_dataset = pd.read_csv(test, sep="\t",header=None)
     
-    return train_dataset, test_dataset    
+    return train_dataset1.to_numpy(), train_dataset2.to_numpy(), test_dataset.to_numpy()    
 if __name__ == '__main__':
-    train_cis, test_cis = load_data("cis")
-    train_fa, test_fa = load_data("fa")
-
-    train_cis = train_cis.to_numpy()
-    test_cis = test_cis.to_numpy()
-    train_fa = train_fa.to_numpy()
-    test_fa = test_fa.to_numpy()
+    ##################
+    #      cis       #
+    ##################
+    train_cis_1, train_cis_2, test_cis = load_data("cis")
     
-    train_cis_x, train_cis_y = train_cis[:, :2], train_cis[:, 2:]
+    test_cis_x_1, test_cis_y_1 = train_cis_1[:, :2], train_cis_1[:, 2:]
+    test_cis_x_2, test_cis_y_2 = train_cis_2[:, :2], train_cis_2[:, 2:]
     test_cis_x, test_cis_y = test_cis[:, :2], test_cis[:, 2:]
     
-    print(train_cis_x[:5, :])
-    print("train_cis_x: ", train_cis_x.shape)
-    print("train_cis_y : ", train_cis_y.shape)
-    print("*"*20)
-    print("test_cis_x: ", test_cis_x.shape)
-    print("test_cis_y: ", test_cis_y.shape)
-    print("*"*20)
-    print("test_cis_x: ", test_cis_x.shape)
-    print("test_cis_y: ", test_cis_y.shape)
-    print("*"*20)
-    print("train_fa: ", train_fa.shape)
-    print("test_fa : ", test_fa.shape)
-    
-    # train_cis_x = train_cis_x.to_numpy()
-    plt.plot(train_cis_x[:, :1], train_cis_x[:, 1:2], marker='o')
+    plt.figure(figsize=(10, 10))
+    plt.scatter(test_cis_x[:, :1], test_cis_x[:, 1:2], c = test_cis_y, cmap = mcolors.ListedColormap(["black", "white"]))
+    plt.title('cis_test Actual data')
     plt.show()
     
-    # RBF_CLASSIFIER = RBF(train_cis_x, train_cis_y, test_cis_x, test_cis_y, num_of_classes=2, k=2, std_from_clusters=False)
-    # RBF_CLASSIFIER.fit()
+        
+    ##################
+    #     cis #1     #
+    ##################
+    rbfn_cis_1 = RBFNet(lr=1e-2, K=11, epochs=300)
+    rbfn_cis_1.fit(test_cis_x_1, test_cis_y_1)
+
+    y_pred = rbfn_cis_1.predict(test_cis_x)
+    y_pred = np.where(y_pred > 0.5, 1, 0)
+    
+    accuracy = sum(np.equal(test_cis_y, y_pred)) / len(test_cis_y)
+
+    plt.figure(figsize=(10, 10))
+    plt.scatter(test_cis_x[:, :1], test_cis_x[:, 1:2], c = y_pred, cmap = mcolors.ListedColormap(["black", "white"]))
+    plt.text(0.3, 0.5, 'Accuracy:'+str(accuracy),  color='b')
+    plt.title('cis_test#1')
+    plt.show()
+    
+    
+    ##################
+    #     cis #2     #
+    ##################
+    rbfn_cis_2 = RBFNet(lr=1e-2, K=11, epochs=300)
+    rbfn_cis_2.fit(test_cis_x_2, test_cis_y_2)
+
+    y_pred = rbfn_cis_2.predict(test_cis_x)
+    y_pred = np.where(y_pred > 0.5, 1, 0)
+    
+    accuracy = sum(np.equal(test_cis_y, y_pred)) / len(test_cis_y)
+
+    plt.figure(figsize=(10, 10))
+    plt.scatter(test_cis_x[:, :1], test_cis_x[:, 1:2], c = y_pred, cmap = mcolors.ListedColormap(["black", "white"]))
+    plt.text(0.3, 0.5, 'Accuracy:'+str(accuracy),  color='b')
+    plt.title('cis_test#2')
+    plt.show()
+    
+    
+    ##################
+    #       fa       #
+    ##################
+    train_fa_1, train_fa_2, test_fa = load_data("fa")
+    
+    train_fa_x_1, train_fa_y_1 = train_fa_1[:, :1], train_fa_1[:, 1:]
+    train_fa_x_2, train_fa_y_2 = train_fa_2[:, :1], train_fa_2[:, 1:]
+    test_fa_x, test_fa_y = test_fa[:, :1], test_fa[:, 1:]
+    
+    
+    ##################
+    #     fa #1      #
+    ##################
+    rbfn_fa = RBFNet(lr=1e-2, K=5, epochs=500)
+    rbfn_fa.fit(train_fa_x_1, train_fa_y_1)
+    
+    y_pred = rbfn_fa.predict(test_fa_x)
+    MSE = 1 / len(test_fa_y) * np.sum((test_fa_y - y_pred)**2)
+    
+    plt.plot(test_fa_x, test_fa_y, c='r', label="Aactual Data")
+    plt.plot(test_fa_x, y_pred, c='b', label="Predicted Data")
+    plt.title('fa test #1')
+    plt.text(0.6, 0.1, 'MSE:%.5f'%MSE,  color='k')
+    plt.show()
+    
+    ##################
+    #     fa #2     #
+    ##################
+    rbfn_fa = RBFNet(lr=1e-2, K=5, epochs=500)
+    rbfn_fa.fit(train_fa_x_2, train_fa_y_2)
+    
+    y_pred = rbfn_fa.predict(test_fa_x)
+    MSE = 1 / len(test_fa_y) * np.sum((test_fa_y - y_pred)**2)
+    plt.plot(test_fa_x, test_fa_y, c='r', label="Aactual Data")
+    plt.plot(test_fa_x, y_pred, c='b', label="Predicted Data")
+    plt.title('fa test #2')
+    plt.text(0.6, 0.1, 'MSE:%.5f'%MSE,  color='k')
+    plt.show()
+    
