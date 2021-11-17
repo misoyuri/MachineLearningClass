@@ -60,7 +60,7 @@ def kmeans(X, K):
     print("stds:", stds)
     return centroids, stds
 
-class RBFNet(object):
+class RBFN():
     def __init__(self, K=2, lr=0.01, epochs=100):
         self.k = K
         self.lr = lr
@@ -108,6 +108,8 @@ def load_data(dataset):
     test_dataset = pd.read_csv(test, sep="\t",header=None)
     
     return train_dataset1.to_numpy(), train_dataset2.to_numpy(), test_dataset.to_numpy()    
+
+
 if __name__ == '__main__':
     ##################
     #      cis       #
@@ -118,16 +120,18 @@ if __name__ == '__main__':
     test_cis_x_2, test_cis_y_2 = train_cis_2[:, :2], train_cis_2[:, 2:]
     test_cis_x, test_cis_y = test_cis[:, :2], test_cis[:, 2:]
     
-    plt.figure(figsize=(10, 10))
-    plt.scatter(test_cis_x[:, :1], test_cis_x[:, 1:2], c = test_cis_y, cmap = mcolors.ListedColormap(["black", "white"]))
-    plt.title('cis_test Actual data')
-    plt.show()
+    # plt.figure(figsize=(10, 10))
+    # plt.scatter(test_cis_x[:, :1], test_cis_x[:, 1:2], c = test_cis_y, cmap = mcolors.ListedColormap(["black", "white"]))
+    # plt.title('cis_test Actual data')
+    # plt.show()
     
-        
+    
+    K = 3
     ##################
     #     cis #1     #
     ##################
-    rbfn_cis_1 = RBFNet(lr=1e-2, K=11, epochs=300)
+    
+    rbfn_cis_1 = RBFN(lr=1e-2, K=K, epochs=300)
     rbfn_cis_1.fit(test_cis_x_1, test_cis_y_1)
 
     y_pred = rbfn_cis_1.predict(test_cis_x)
@@ -137,15 +141,16 @@ if __name__ == '__main__':
 
     plt.figure(figsize=(10, 10))
     plt.scatter(test_cis_x[:, :1], test_cis_x[:, 1:2], c = y_pred, cmap = mcolors.ListedColormap(["black", "white"]))
-    plt.text(0.3, 0.5, 'Accuracy:'+str(accuracy),  color='b')
+    plt.text(0.3, 0.5, 'K=' + str(K) + ', Accuracy:'+str(accuracy),  color='b')
     plt.title('cis_test#1')
-    plt.show()
+    plt.savefig("./outputs/cis_test1_K" + str(K) + ".png")
+    plt.clf()
     
     
     ##################
     #     cis #2     #
     ##################
-    rbfn_cis_2 = RBFNet(lr=1e-2, K=11, epochs=300)
+    rbfn_cis_2 = RBFN(lr=1e-2, K=11, epochs=300)
     rbfn_cis_2.fit(test_cis_x_2, test_cis_y_2)
 
     y_pred = rbfn_cis_2.predict(test_cis_x)
@@ -155,9 +160,10 @@ if __name__ == '__main__':
 
     plt.figure(figsize=(10, 10))
     plt.scatter(test_cis_x[:, :1], test_cis_x[:, 1:2], c = y_pred, cmap = mcolors.ListedColormap(["black", "white"]))
-    plt.text(0.3, 0.5, 'Accuracy:'+str(accuracy),  color='b')
+    plt.text(0.3, 0.5, 'K=' + str(K) + ', Accuracy:'+str(accuracy),  color='b')
     plt.title('cis_test#2')
-    plt.show()
+    plt.savefig("./outputs/cis_test2_K" + str(K) + ".png")
+    plt.clf()
     
     
     ##################
@@ -169,11 +175,12 @@ if __name__ == '__main__':
     train_fa_x_2, train_fa_y_2 = train_fa_2[:, :1], train_fa_2[:, 1:]
     test_fa_x, test_fa_y = test_fa[:, :1], test_fa[:, 1:]
     
+    K=11
     
     ##################
     #     fa #1      #
     ##################
-    rbfn_fa = RBFNet(lr=1e-2, K=5, epochs=500)
+    rbfn_fa = RBFN(lr=1e-2, K=K, epochs=500)
     rbfn_fa.fit(train_fa_x_1, train_fa_y_1)
     
     y_pred = rbfn_fa.predict(test_fa_x)
@@ -181,21 +188,27 @@ if __name__ == '__main__':
     
     plt.plot(test_fa_x, test_fa_y, c='r', label="Aactual Data")
     plt.plot(test_fa_x, y_pred, c='b', label="Predicted Data")
+    plt.legend()
     plt.title('fa test #1')
     plt.text(0.6, 0.1, 'MSE:%.5f'%MSE,  color='k')
-    plt.show()
+    plt.text(0.6, 0.2, 'K:%d'%K,  color='k')
+    plt.savefig("./outputs/fa_test1_K" + str(K) + ".png")
+    plt.clf()
+
     
     ##################
     #     fa #2     #
     ##################
-    rbfn_fa = RBFNet(lr=1e-2, K=5, epochs=500)
+    rbfn_fa = RBFN(lr=1e-2, K=K, epochs=500)
     rbfn_fa.fit(train_fa_x_2, train_fa_y_2)
     
     y_pred = rbfn_fa.predict(test_fa_x)
     MSE = 1 / len(test_fa_y) * np.sum((test_fa_y - y_pred)**2)
     plt.plot(test_fa_x, test_fa_y, c='r', label="Aactual Data")
     plt.plot(test_fa_x, y_pred, c='b', label="Predicted Data")
+    plt.legend()
     plt.title('fa test #2')
     plt.text(0.6, 0.1, 'MSE:%.5f'%MSE,  color='k')
-    plt.show()
-    
+    plt.text(0.6, 0.2, 'K:%d'%K,  color='k')
+    plt.savefig("./outputs/fa_test2_K" + str(K) + ".png")
+    plt.clf()
